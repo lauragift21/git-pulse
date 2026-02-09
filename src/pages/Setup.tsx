@@ -9,6 +9,7 @@ import {
   Loader2,
   AlertCircle,
   BookMarked,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,7 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { useGitHubToken } from "@/hooks/useGitHubToken";
 import { useTrackedRepos } from "@/hooks/useTrackedRepos";
 import { fetchUserInfo } from "@/api/events";
-import { searchRepos } from "@/api/repositories";
+import { searchRepos, fetchUserRepos } from "@/api/repositories";
 import { getLanguageColor } from "@/lib/colors";
 
 interface SetupProps {
@@ -57,6 +58,10 @@ export function Setup({ onComplete }: SetupProps) {
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRequestIdRef = useRef(0);
+
+  // Recent repos state
+  const [recentRepos, setRecentRepos] = useState<RepoResult[]>([]);
+  const [isLoadingRecent, setIsLoadingRecent] = useState(false);
 
   // Clear the OAuth error from the hook once we've captured it
   useEffect(() => {
@@ -99,6 +104,31 @@ export function Setup({ onComplete }: SetupProps) {
       cancelled = true;
     };
   }, [isAuthenticated, user, removeToken]);
+
+  // Fetch the 5 most recent repos once the user is authenticated
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+    setIsLoadingRecent(true);
+
+    fetchUserRepos()
+      .then((repos) => {
+        if (!cancelled) {
+          setRecentRepos(repos.slice(0, 5));
+        }
+      })
+      .catch(() => {
+        // Silently ignore — recent repos are optional suggestions
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingRecent(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const handleSignIn = useCallback(() => {
     setAuthError(null);
@@ -180,8 +210,12 @@ export function Setup({ onComplete }: SetupProps) {
       <div className="w-full max-w-xl relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-bg-card border border-border-primary mb-4">
-            <Github className="w-7 h-7 text-text-primary" />
+          <div className="inline-flex items-center justify-center mb-4">
+            <img
+              src="/gitpulse-logo.png"
+              alt="GitPulse"
+              className="w-14 h-14 rounded-2xl"
+            />
           </div>
           <h1 className="text-2xl font-bold text-text-primary">
             Welcome to GitPulse
@@ -304,6 +338,85 @@ export function Setup({ onComplete }: SetupProps) {
               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary animate-spin" />
             )}
           </div>
+
+          {/* Recent repos suggestions */}
+          {!searchQuery.trim() &&
+            (isLoadingRecent || recentRepos.length > 0) && (
+              <div className="mb-4">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Clock className="w-3.5 h-3.5 text-text-tertiary" />
+                  <span className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+                    Recent Repositories
+                  </span>
+                </div>
+                {isLoadingRecent ? (
+                  <div className="flex items-center justify-center gap-2 py-4 text-text-secondary text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading your repos...
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {recentRepos.map((repo) => {
+                      const tracked = isTracked(repo.full_name);
+                      return (
+                        <button
+                          key={repo.id}
+                          type="button"
+                          onClick={() => toggleRepo(repo.full_name)}
+                          className={`w-full text-left rounded-lg border p-3 transition-all duration-150 cursor-pointer ${
+                            tracked
+                              ? "border-accent-blue/40 bg-accent-blue/5"
+                              : "border-border-primary bg-bg-primary hover:border-border-primary/80 hover:bg-bg-hover"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <Avatar
+                              src={repo.owner.avatar_url}
+                              alt={repo.full_name}
+                              size="sm"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-text-primary truncate">
+                                  {repo.full_name}
+                                </span>
+                                {tracked && (
+                                  <Check className="w-3.5 h-3.5 text-accent-blue shrink-0" />
+                                )}
+                              </div>
+                              {repo.description && (
+                                <p className="text-xs text-text-secondary mt-0.5 line-clamp-1">
+                                  {repo.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-3 mt-1.5">
+                                {repo.language && (
+                                  <span className="flex items-center gap-1 text-xs text-text-secondary">
+                                    <span
+                                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                                      style={{
+                                        backgroundColor: getLanguageColor(
+                                          repo.language,
+                                        ),
+                                      }}
+                                    />
+                                    {repo.language}
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1 text-xs text-text-secondary">
+                                  <Star className="w-3 h-3" />
+                                  {repo.stargazers_count.toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
           {/* Search results */}
           {searchResults.length > 0 && (

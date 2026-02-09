@@ -11,6 +11,7 @@ import {
   Package,
   Activity,
   Filter,
+  ExternalLink,
 } from "lucide-react";
 import { eventCollection } from "@/collections/events";
 import { Header } from "@/components/layout/Header";
@@ -113,6 +114,19 @@ function getEventMeta(type: string): EventMeta {
         color: "text-neutral-600 dark:text-neutral-400",
         badgeVariant: "default",
       };
+    case "PullRequestReviewEvent":
+    case "PullRequestReviewCommentEvent":
+      return {
+        icon: <GitPullRequest size={16} />,
+        color: "text-black dark:text-white",
+        badgeVariant: "default",
+      };
+    case "IssueCommentEvent":
+      return {
+        icon: <CircleDot size={16} />,
+        color: "text-black dark:text-white",
+        badgeVariant: "default",
+      };
     default:
       return {
         icon: <Activity size={16} />,
@@ -160,8 +174,103 @@ function getEventDescription(event: Event): string {
       const name = release?.name ?? "a release";
       return `published release ${name}`;
     }
+    case "PullRequestReviewEvent": {
+      const pr = payload.pull_request as Record<string, unknown> | undefined;
+      const number = pr?.number ?? "";
+      const action = (payload.action as string) ?? "submitted";
+      return `${action} a review on pull request #${number}`;
+    }
+    case "PullRequestReviewCommentEvent": {
+      const pr = payload.pull_request as Record<string, unknown> | undefined;
+      const number = pr?.number ?? "";
+      return `commented on pull request #${number}`;
+    }
+    case "IssueCommentEvent": {
+      const issue = payload.issue as Record<string, unknown> | undefined;
+      const number = issue?.number ?? "";
+      return `commented on issue #${number}`;
+    }
     default:
       return `performed ${event.type}`;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Event → GitHub URL                                                         */
+/* -------------------------------------------------------------------------- */
+
+function getEventUrl(event: Event): string {
+  const payload = event.payload as Record<string, unknown>;
+  const repoUrl = `https://github.com/${event.repo.name}`;
+
+  switch (event.type) {
+    case "PushEvent": {
+      // Link to the compare view for the push range, or the head commit
+      const before = payload.before as string | undefined;
+      const head = payload.head as string | undefined;
+      if (before && head && before !== head) {
+        return `${repoUrl}/compare/${before.slice(0, 12)}...${head.slice(0, 12)}`;
+      }
+      return head ? `${repoUrl}/commit/${head}` : repoUrl;
+    }
+    case "PullRequestEvent": {
+      // Construct URL from repo + PR number (html_url may not be in Events API payload)
+      const pr = payload.pull_request as Record<string, unknown> | undefined;
+      const number = pr?.number as number | undefined;
+      return number ? `${repoUrl}/pull/${number}` : repoUrl;
+    }
+    case "IssuesEvent": {
+      const issue = payload.issue as Record<string, unknown> | undefined;
+      const number = issue?.number as number | undefined;
+      return number ? `${repoUrl}/issues/${number}` : repoUrl;
+    }
+    case "IssueCommentEvent": {
+      const issue = payload.issue as Record<string, unknown> | undefined;
+      const comment = payload.comment as Record<string, unknown> | undefined;
+      const number = issue?.number as number | undefined;
+      const commentId = comment?.id as number | undefined;
+      if (number && commentId) {
+        return `${repoUrl}/issues/${number}#issuecomment-${commentId}`;
+      }
+      return number ? `${repoUrl}/issues/${number}` : repoUrl;
+    }
+    case "ForkEvent": {
+      const forkee = payload.forkee as Record<string, unknown> | undefined;
+      const fullName = forkee?.full_name as string | undefined;
+      return fullName ? `https://github.com/${fullName}` : repoUrl;
+    }
+    case "ReleaseEvent": {
+      const release = payload.release as Record<string, unknown> | undefined;
+      const tagName = release?.tag_name as string | undefined;
+      return tagName ? `${repoUrl}/releases/tag/${tagName}` : repoUrl;
+    }
+    case "CreateEvent": {
+      const refType = payload.ref_type as string | undefined;
+      const ref = payload.ref as string | undefined;
+      if (refType === "tag" && ref) return `${repoUrl}/releases/tag/${ref}`;
+      if (refType === "branch" && ref) return `${repoUrl}/tree/${ref}`;
+      return repoUrl;
+    }
+    case "PullRequestReviewEvent": {
+      const pr = payload.pull_request as Record<string, unknown> | undefined;
+      const number = pr?.number as number | undefined;
+      return number ? `${repoUrl}/pull/${number}#pullrequestreview` : repoUrl;
+    }
+    case "PullRequestReviewCommentEvent": {
+      const pr = payload.pull_request as Record<string, unknown> | undefined;
+      const comment = payload.comment as Record<string, unknown> | undefined;
+      const number = pr?.number as number | undefined;
+      const commentId = comment?.id as number | undefined;
+      if (number && commentId) {
+        return `${repoUrl}/pull/${number}#discussion_r${commentId}`;
+      }
+      return number ? `${repoUrl}/pull/${number}` : repoUrl;
+    }
+    case "DeleteEvent":
+    case "WatchEvent":
+      return repoUrl;
+    default:
+      return repoUrl;
   }
 }
 
@@ -265,7 +374,7 @@ export function ActivityFeed() {
                           className={`absolute -left-[calc(1.5rem+5px)] top-4 flex h-2.5 w-2.5 items-center justify-center rounded-full ring-2 ring-bg-primary ${meta.color} bg-current`}
                         />
 
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-3 group/event">
                           <Avatar
                             src={event.actor.avatar_url}
                             alt={event.actor.display_login}
@@ -297,6 +406,16 @@ export function ActivityFeed() {
                               </time>
                             </div>
                           </div>
+
+                          <a
+                            href={getEventUrl(event)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`View on GitHub`}
+                            className="shrink-0 text-text-tertiary hover:text-text-primary opacity-0 group-hover/event:opacity-100 focus-visible:opacity-100 transition-opacity"
+                          >
+                            <ExternalLink size={14} />
+                          </a>
                         </div>
                       </Card>
                     );

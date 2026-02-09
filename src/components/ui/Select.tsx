@@ -21,7 +21,7 @@ export function Select({
       )}
       <select
         id={id}
-        className={`rounded-lg border border-border-primary bg-bg-primary px-3 py-1.5 text-sm text-text-primary focus:border-accent-blue focus:outline-none focus:ring-2 focus:ring-accent-blue/20 ${className}`}
+        className={`rounded-lg border border-border-primary bg-bg-primary px-3 py-1.5 text-sm text-text-primary focus:border-text-primary focus:outline-none focus:ring-2 focus:ring-text-primary/20 ${className}`}
         {...props}
       >
         {options.map((opt) => (

@@ -72,7 +72,15 @@ export async function checkStarred(fullName: string): Promise<boolean> {
   try {
     await githubFetch(`/user/starred/${fullName}`);
     return true;
-  } catch {
-    return false;
+  } catch (err) {
+    // 404 means not starred — that's expected
+    if (
+      err instanceof Error &&
+      "status" in err &&
+      (err as { status: number }).status === 404
+    ) {
+      return false;
+    }
+    throw err;
   }
 }

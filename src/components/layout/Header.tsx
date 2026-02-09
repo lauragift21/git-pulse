@@ -45,7 +45,12 @@ export function Header({ title, subtitle }: HeaderProps) {
           <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
           Refresh
         </Button>
-        <Button variant="ghost" size="sm" onClick={toggle}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggle}
+          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        >
           {isDark ? <Sun size={14} /> : <Moon size={14} />}
         </Button>
       </div>

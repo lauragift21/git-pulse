@@ -1,6 +1,11 @@
 import { useState, useMemo } from "react";
-import { useLiveQuery, eq, and } from "@tanstack/react-db";
-import { pullRequestCollection } from "@/collections/pull-requests";
+import { useLiveQuery } from "@tanstack/react-db";
+import {
+  allPullRequests,
+  openNonDraftPRs,
+  openDraftPRs,
+  closedPRs as closedPRsQuery,
+} from "@/queries/pull-requests";
 import type { PullRequest } from "@/schemas/pull-request";
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
@@ -132,13 +137,13 @@ function PRCard({ pr }: { pr: PullRequest }) {
         <div className="flex items-start gap-2 mb-2">
           <span className="mt-0.5 shrink-0">
             {isMerged ? (
-              <GitMerge size={14} className="text-purple-500" />
+              <GitMerge size={14} className="text-text-secondary" />
             ) : pr.state === "closed" ? (
-              <XCircle size={14} className="text-red-500" />
+              <XCircle size={14} className="text-text-tertiary" />
             ) : pr.draft ? (
               <GitPullRequest size={14} className="text-text-tertiary" />
             ) : (
-              <GitPullRequest size={14} className="text-emerald-500" />
+              <GitPullRequest size={14} className="text-text-primary" />
             )}
           </span>
           <a
@@ -178,10 +183,10 @@ function PRCard({ pr }: { pr: PullRequest }) {
 
         {/* Stats row */}
         <div className="flex items-center gap-3 text-xs text-text-tertiary mb-2.5">
-          <span className="text-emerald-500 font-medium">
+          <span className="text-text-primary font-medium">
             +{pr.additions.toLocaleString()}
           </span>
-          <span className="text-red-500 font-medium">
+          <span className="text-text-tertiary font-medium">
             -{pr.deletions.toLocaleString()}
           </span>
           {pr.changed_files > 0 && (
@@ -311,20 +316,10 @@ export function PullRequests() {
   });
 
   // ---- Open PRs (not draft) ----
-  const { data: openPRs = [] } = useLiveQuery((q) =>
-    q
-      .from({ pr: pullRequestCollection })
-      .where(({ pr }) => and(eq(pr.state, "open"), eq(pr.draft, false)))
-      .orderBy(({ pr }) => pr.updated_at, "desc"),
-  );
+  const { data: openPRs = [] } = useLiveQuery(openNonDraftPRs, []);
 
   // ---- Draft / In Review PRs ----
-  const { data: draftReviewPRs = [] } = useLiveQuery((q) =>
-    q
-      .from({ pr: pullRequestCollection })
-      .where(({ pr }) => and(eq(pr.state, "open"), eq(pr.draft, true)))
-      .orderBy(({ pr }) => pr.updated_at, "desc"),
-  );
+  const { data: draftReviewPRs = [] } = useLiveQuery(openDraftPRs, []);
 
   // We also want open PRs that have requested_reviewers (in-review).
   // TanStack DB doesn't support array-length filters, so we merge client-side.
@@ -345,17 +340,10 @@ export function PullRequests() {
   }, [draftReviewPRs, inReviewFromOpen]);
 
   // ---- Merged / Closed PRs ----
-  const { data: closedPRs = [] } = useLiveQuery((q) =>
-    q
-      .from({ pr: pullRequestCollection })
-      .where(({ pr }) => eq(pr.state, "closed"))
-      .orderBy(({ pr }) => pr.updated_at, "desc"),
-  );
+  const { data: closedPRs = [] } = useLiveQuery(closedPRsQuery, []);
 
   // ---- All PRs for deriving filter options ----
-  const { data: allPRs = [] } = useLiveQuery((q) =>
-    q.from({ pr: pullRequestCollection }),
-  );
+  const { data: allPRs = [] } = useLiveQuery(allPullRequests, []);
 
   // Derive unique repos
   const repoOptions = useMemo(() => {
@@ -401,7 +389,7 @@ export function PullRequests() {
           <KanbanColumn
             icon={<GitPullRequest size={15} />}
             title="Open"
-            accentClass="text-emerald-500"
+            accentClass="text-text-primary"
             prs={filteredOpen}
             emptyIcon={<GitPullRequest size={32} />}
             emptyText="No open pull requests match the current filters."
@@ -411,7 +399,7 @@ export function PullRequests() {
           <KanbanColumn
             icon={<GitPullRequest size={15} />}
             title="Draft / In Review"
-            accentClass="text-amber-500"
+            accentClass="text-text-secondary"
             prs={filteredDraftReview}
             emptyIcon={<MessageSquare size={32} />}
             emptyText="No draft or in-review pull requests right now."
@@ -421,7 +409,7 @@ export function PullRequests() {
           <KanbanColumn
             icon={<GitMerge size={15} />}
             title="Merged / Closed"
-            accentClass="text-purple-500"
+            accentClass="text-text-tertiary"
             prs={filteredClosed}
             emptyIcon={<GitMerge size={32} />}
             emptyText="No merged or closed pull requests match the filters."

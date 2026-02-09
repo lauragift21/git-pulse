@@ -1,4 +1,5 @@
 import { githubFetch } from "./client";
+import { extractRepoFullName } from "@/lib/github";
 
 export interface GitHubLabel {
   id: number;
@@ -40,11 +41,6 @@ export interface GitHubIssue {
   html_url: string;
   pull_request?: { url: string };
   repository_url: string;
-}
-
-function extractRepoFullName(repoUrl: string): string {
-  // "https://api.github.com/repos/owner/repo" -> "owner/repo"
-  return repoUrl.replace("https://api.github.com/repos/", "");
 }
 
 export async function fetchRepoIssues(
@@ -127,17 +123,18 @@ export async function fetchAllLabels(
   repoFullNames: string[],
 ): Promise<(GitHubLabel & { repository_full_name: string })[]> {
   const results = await Promise.allSettled(
-    repoFullNames.map((name) => fetchRepoLabels(name)),
+    repoFullNames.map(async (name) => {
+      const labels = await fetchRepoLabels(name);
+      return labels.map((label) => ({ ...label, repository_full_name: name }));
+    }),
   );
   return results
     .filter(
-      (r): r is PromiseFulfilledResult<GitHubLabel[]> =>
-        r.status === "fulfilled",
+      (
+        r,
+      ): r is PromiseFulfilledResult<
+        (GitHubLabel & { repository_full_name: string })[]
+      > => r.status === "fulfilled",
     )
-    .flatMap((r, i) =>
-      r.value.map((label) => ({
-        ...label,
-        repository_full_name: repoFullNames[i],
-      })),
-    );
+    .flatMap((r) => r.value);
 }

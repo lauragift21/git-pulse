@@ -147,18 +147,21 @@ export function Contributors() {
   /* ---- Live queries ---- */
 
   // All PRs — reactive data source
-  const { data: prRows } = useLiveQuery((q) =>
-    q.from({ pr: pullRequestCollection }),
+  const { data: prRows } = useLiveQuery(
+    (q) => q.from({ pr: pullRequestCollection }),
+    [],
   );
 
   // All issues — reactive data source
-  const { data: issueRows } = useLiveQuery((q) =>
-    q.from({ issue: issueCollection }),
+  const { data: issueRows } = useLiveQuery(
+    (q) => q.from({ issue: issueCollection }),
+    [],
   );
 
   // All events — for the timeline chart
-  const { data: eventRows } = useLiveQuery((q) =>
-    q.from({ event: eventCollection }),
+  const { data: eventRows } = useLiveQuery(
+    (q) => q.from({ event: eventCollection }),
+    [],
   );
 
   // TanStack DB aggregate: count PRs using groupBy
@@ -186,6 +189,7 @@ export function Contributors() {
     const map = new Map<string, ContributorStats>();
 
     for (const pr of prs) {
+      if (!pr.user) continue;
       const login = pr.user.login;
       const existing = map.get(login);
       if (existing) {
@@ -204,6 +208,7 @@ export function Contributors() {
     }
 
     for (const issue of issues) {
+      if (!issue.user) continue;
       const login = issue.user.login;
       const existing = map.get(login);
       if (existing) {
@@ -226,7 +231,7 @@ export function Contributors() {
 
   // Summary stats
   const totalContributors = contributors.length;
-  const totalPRs = aggregatedPrCount || prs.length;
+  const totalPRs = aggregatedPrCount ?? prs.length;
   const totalIssues = issues.length;
   const avgPrsPerContributor =
     totalContributors > 0 ? (prs.length / totalContributors).toFixed(1) : "0";
@@ -243,23 +248,25 @@ export function Contributors() {
 
   // Contributions over time (events grouped by week)
   const weeklyData: WeeklyDataPoint[] = useMemo(() => {
-    const weekMap = new Map<string, number>();
+    const weekMap = new Map<string, { date: Date; count: number }>();
 
     for (const event of events) {
+      if (!event.created_at) continue;
       const date = parseISO(event.created_at);
       const weekStart = startOfWeek(date, { weekStartsOn: 1 });
       const key = format(weekStart, "MMM d");
-      weekMap.set(key, (weekMap.get(key) ?? 0) + 1);
+      const existing = weekMap.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        weekMap.set(key, { date: weekStart, count: 1 });
+      }
     }
 
-    // Sort chronologically by parsing dates back
-    const entries = Array.from(weekMap.entries());
-    entries.sort((a, b) => {
-      // Simple string comparison works since all are from recent weeks
-      return entries.indexOf(a) - entries.indexOf(b);
-    });
-
-    return entries.map(([week, contributions]) => ({ week, contributions }));
+    // Sort chronologically by actual date
+    return Array.from(weekMap.entries())
+      .sort(([, a], [, b]) => a.date.getTime() - b.date.getTime())
+      .map(([week, { count }]) => ({ week, contributions: count }));
   }, [events]);
 
   /* ---- Render ---- */
@@ -275,35 +282,44 @@ export function Contributors() {
         {/* ---- Summary stats row ---- */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            icon={<Users size={20} className="text-blue-500" />}
+            icon={<Users size={20} className="text-black dark:text-white" />}
             label="Total Contributors"
             value={totalContributors.toLocaleString()}
-            accentClass="bg-blue-500/15"
+            accentClass="bg-black/5 dark:bg-white/5"
           />
           <StatCard
-            icon={<GitPullRequest size={20} className="text-purple-500" />}
+            icon={
+              <GitPullRequest
+                size={20}
+                className="text-black dark:text-white"
+              />
+            }
             label="Total PRs"
             value={totalPRs.toLocaleString()}
-            accentClass="bg-purple-500/15"
+            accentClass="bg-black/5 dark:bg-white/5"
           />
           <StatCard
-            icon={<CircleDot size={20} className="text-emerald-500" />}
+            icon={
+              <CircleDot size={20} className="text-black dark:text-white" />
+            }
             label="Total Issues"
             value={totalIssues.toLocaleString()}
-            accentClass="bg-emerald-500/15"
+            accentClass="bg-black/5 dark:bg-white/5"
           />
           <StatCard
-            icon={<TrendingUp size={20} className="text-amber-500" />}
+            icon={
+              <TrendingUp size={20} className="text-black dark:text-white" />
+            }
             label="Avg PRs / Contributor"
             value={avgPrsPerContributor}
-            accentClass="bg-amber-500/15"
+            accentClass="bg-black/5 dark:bg-white/5"
           />
         </div>
 
         {/* ---- Leaderboard ---- */}
         <Card padding="none" className="overflow-hidden">
           <div className="flex items-center gap-2 px-5 py-4 border-b border-border-primary">
-            <Trophy size={16} className="text-amber-500" />
+            <Trophy size={16} className="text-text-primary" />
             <h2 className="text-sm font-semibold text-text-primary">
               Contributor Leaderboard
             </h2>
@@ -400,7 +416,7 @@ export function Contributors() {
           {/* Bar chart: Top 10 by PR count */}
           <Card padding="md">
             <div className="flex items-center gap-2 mb-4">
-              <GitPullRequest size={16} className="text-blue-500" />
+              <GitPullRequest size={16} className="text-text-primary" />
               <h3 className="text-sm font-semibold text-text-primary">
                 Top Contributors by PRs
               </h3>
@@ -439,7 +455,7 @@ export function Contributors() {
                   <Bar
                     dataKey="prs"
                     name="Pull Requests"
-                    fill="#3b82f6"
+                    fill="var(--color-text-primary)"
                     radius={[4, 4, 0, 0]}
                     maxBarSize={40}
                   />
@@ -451,7 +467,7 @@ export function Contributors() {
           {/* Area chart: Contributions over time */}
           <Card padding="md">
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp size={16} className="text-emerald-500" />
+              <TrendingUp size={16} className="text-text-primary" />
               <h3 className="text-sm font-semibold text-text-primary">
                 Contributions Over Time
               </h3>
@@ -474,11 +490,15 @@ export function Contributors() {
                       x2="0"
                       y2="1"
                     >
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop
+                        offset="5%"
+                        stopColor="var(--color-text-primary)"
+                        stopOpacity={0.15}
+                      />
                       <stop
                         offset="95%"
-                        stopColor="#10b981"
-                        stopOpacity={0.02}
+                        stopColor="var(--color-text-primary)"
+                        stopOpacity={0}
                       />
                     </linearGradient>
                   </defs>
@@ -504,7 +524,7 @@ export function Contributors() {
                     type="monotone"
                     dataKey="contributions"
                     name="Contributions"
-                    stroke="#10b981"
+                    stroke="var(--color-text-primary)"
                     strokeWidth={2}
                     fill="url(#contributionGradient)"
                   />

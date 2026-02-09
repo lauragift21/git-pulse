@@ -13,8 +13,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { issueCollection } from "@/collections/issues";
-import { repositoryCollection } from "@/collections/repositories";
-import { labelCollection } from "@/collections/labels";
+import { allReposByName } from "@/queries/repositories";
+import { allLabelsByName } from "@/queries/labels";
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -113,22 +113,10 @@ export function Issues() {
   );
 
   // Repositories for filter dropdown
-  const { data: repos = [] } = useLiveQuery(
-    (q) =>
-      q
-        .from({ repo: repositoryCollection })
-        .orderBy(({ repo }) => repo.full_name, "asc"),
-    [],
-  );
+  const { data: repos = [] } = useLiveQuery(allReposByName, []);
 
   // All labels for filter dropdown
-  const { data: allLabelsRaw = [] } = useLiveQuery(
-    (q) =>
-      q
-        .from({ label: labelCollection })
-        .orderBy(({ label }) => label.name, "asc"),
-    [],
-  );
+  const { data: allLabelsRaw = [] } = useLiveQuery(allLabelsByName, []);
 
   /* -- Derived data -- */
 
@@ -158,9 +146,24 @@ export function Issues() {
     return result;
   }, [issueRows, repoFilter, labelFilter]);
 
-  /* -- Counts for state pills -- */
-  const openCount = issues.filter((i) => i.state === "open").length;
-  const closedCount = issues.filter((i) => i.state === "closed").length;
+  /* -- Counts for state pills (computed before state filter, but after repo/label filters) -- */
+  const issuesForCounts: Issue[] = useMemo(() => {
+    let result = issueRows as Issue[];
+    if (repoFilter !== "all") {
+      result = result.filter((i) => i.repository_full_name === repoFilter);
+    }
+    if (labelFilter !== "all") {
+      result = result.filter((i) =>
+        i.labels.some((l) => l.name === labelFilter),
+      );
+    }
+    return result;
+  }, [issueRows, repoFilter, labelFilter]);
+
+  const openCount = issuesForCounts.filter((i) => i.state === "open").length;
+  const closedCount = issuesForCounts.filter(
+    (i) => i.state === "closed",
+  ).length;
 
   /* -- Selection helpers -- */
 
@@ -291,7 +294,8 @@ export function Issues() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search issues..."
-                  className="w-full rounded-lg border border-border-primary bg-bg-primary pl-9 pr-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent-blue focus:outline-none focus:ring-2 focus:ring-accent-blue/20"
+                  aria-label="Search issues"
+                  className="w-full rounded-lg border border-border-primary bg-bg-primary pl-9 pr-3 py-1.5 text-sm text-text-primary placeholder:text-text-tertiary focus:border-text-primary focus:outline-none focus:ring-2 focus:ring-text-primary/20"
                 />
                 {searchTerm && (
                   <button
@@ -307,7 +311,7 @@ export function Issues() {
               <div className="flex items-center gap-1">
                 {(
                   [
-                    { key: "all", label: "All", count: issues.length },
+                    { key: "all", label: "All", count: issuesForCounts.length },
                     { key: "open", label: "Open", count: openCount },
                     { key: "closed", label: "Closed", count: closedCount },
                   ] as const
@@ -315,9 +319,10 @@ export function Issues() {
                   <button
                     key={key}
                     onClick={() => setStateFilter(key)}
+                    aria-pressed={stateFilter === key}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-colors duration-150 cursor-pointer ${
                       stateFilter === key
-                        ? "bg-accent-primary text-white"
+                        ? "bg-accent-primary text-text-inverse"
                         : "bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary/80 hover:text-text-primary"
                     }`}
                   >
@@ -362,17 +367,17 @@ export function Issues() {
 
         {/* ---- Bulk actions bar ---- */}
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 rounded-lg border border-accent-blue/30 bg-accent-blue/5 px-4 py-2">
+          <div className="flex items-center gap-3 rounded-lg border border-border-primary bg-bg-tertiary px-4 py-2">
             <span className="text-sm font-medium text-text-primary">
               {selectedIds.size} selected
             </span>
             <div className="h-4 w-px bg-border-primary" />
             <Button variant="secondary" size="sm" onClick={handleBulkClose}>
-              <CheckCircle2 size={14} className="text-purple-500" />
+              <CheckCircle2 size={14} className="text-text-secondary" />
               Close selected
             </Button>
             <Button variant="secondary" size="sm" onClick={handleBulkReopen}>
-              <CircleDot size={14} className="text-emerald-500" />
+              <CircleDot size={14} className="text-text-primary" />
               Reopen selected
             </Button>
             <Button
@@ -417,7 +422,7 @@ export function Issues() {
                         type="checkbox"
                         checked={allSelected}
                         onChange={toggleAll}
-                        className="rounded border-border-primary accent-accent-blue cursor-pointer"
+                        className="rounded border-border-primary accent-black dark:accent-white cursor-pointer"
                       />
                     </th>
                     <th className="w-8 px-1 py-2.5" />
@@ -527,7 +532,7 @@ function IssueRow({ issue, selected, onToggle, striped }: IssueRowProps) {
     <tr
       className={`group border-b border-border-primary last:border-b-0 transition-colors duration-100 ${
         selected
-          ? "bg-accent-blue/5"
+          ? "bg-bg-tertiary"
           : striped
             ? "bg-bg-secondary/50"
             : "bg-bg-card"
@@ -539,7 +544,7 @@ function IssueRow({ issue, selected, onToggle, striped }: IssueRowProps) {
           type="checkbox"
           checked={selected}
           onChange={() => onToggle(issue.id)}
-          className="rounded border-border-primary accent-accent-blue cursor-pointer"
+          className="rounded border-border-primary accent-black dark:accent-white cursor-pointer"
         />
       </td>
 
@@ -551,9 +556,9 @@ function IssueRow({ issue, selected, onToggle, striped }: IssueRowProps) {
           className="cursor-pointer hover:opacity-70 transition-opacity"
         >
           {isOpen ? (
-            <CircleDot size={16} className="text-emerald-500" />
+            <CircleDot size={16} className="text-text-primary" />
           ) : (
-            <CheckCircle2 size={16} className="text-purple-500" />
+            <CheckCircle2 size={16} className="text-text-tertiary" />
           )}
         </button>
       </td>
@@ -645,7 +650,8 @@ function IssueRow({ issue, selected, onToggle, striped }: IssueRowProps) {
           href={issue.html_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-text-tertiary hover:text-text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label={`Open issue #${issue.number} on GitHub`}
+          className="text-text-tertiary hover:text-text-primary opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
         >
           <ExternalLink size={14} />
         </a>

@@ -34,10 +34,11 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
   return (
     <button
       onClick={onClick}
+      aria-current={active ? "page" : undefined}
       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-100 cursor-pointer ${
         active
           ? "bg-white/10 text-white"
-          : "text-gray-400 hover:bg-white/5 hover:text-gray-200"
+          : "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
       }`}
     >
       {icon}
@@ -71,8 +72,8 @@ export function Sidebar({ currentPage, onNavigate, onLogout }: SidebarProps) {
     <aside className="flex h-screen w-56 flex-col bg-bg-sidebar border-r border-white/5">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-blue">
-          <Activity size={14} className="text-white" />
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
+          <Activity size={14} className="text-black" />
         </div>
         <span className="text-base font-bold text-white tracking-tight">
           GitPulse

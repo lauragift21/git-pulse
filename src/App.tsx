@@ -4,6 +4,7 @@ import { queryClient } from "@/lib/query-client";
 import { useGitHubToken } from "@/hooks/useGitHubToken";
 import { useTrackedRepos } from "@/hooks/useTrackedRepos";
 import { AppShell } from "@/components/layout/AppShell";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { Page } from "@/components/layout/Sidebar";
 
 import { Setup } from "@/pages/Setup";
@@ -70,7 +71,7 @@ function AppContent() {
       onNavigate={setCurrentPage}
       onLogout={handleLogout}
     >
-      {renderPage()}
+      <ErrorBoundary>{renderPage()}</ErrorBoundary>
     </AppShell>
   );
 }

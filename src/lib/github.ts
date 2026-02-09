@@ -39,3 +39,8 @@ export function removeTrackedRepo(fullName: string): void {
   const repos = getTrackedRepos().filter((r) => r !== fullName);
   setTrackedRepos(repos);
 }
+
+/** Extract "owner/repo" from a GitHub API repository URL. */
+export function extractRepoFullName(repoUrl: string): string {
+  return repoUrl.replace("https://api.github.com/repos/", "");
+}

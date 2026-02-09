@@ -1,5 +1,6 @@
 import type { GitHubLabel, GitHubUser, GitHubMilestone } from "./issues";
 import { githubFetch } from "./client";
+import { extractRepoFullName } from "@/lib/github";
 
 export interface GitHubPullRequest {
   id: number;
@@ -27,10 +28,6 @@ export interface GitHubPullRequest {
   commits: number;
   mergeable: boolean | null;
   repository_url: string;
-}
-
-function extractRepoFullName(repoUrl: string): string {
-  return repoUrl.replace("https://api.github.com/repos/", "");
 }
 
 export async function fetchRepoPullRequests(

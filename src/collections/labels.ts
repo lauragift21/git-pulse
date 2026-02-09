@@ -10,7 +10,7 @@ export const labelCollection = createCollection(
     id: "labels",
     schema: labelSchema,
     getKey: (label: Label) => label.id,
-    queryKey: ["labels"],
+    queryKey: ["labels", getTrackedRepos()],
     queryFn: async (): Promise<Label[]> => {
       const tracked = getTrackedRepos();
       if (tracked.length === 0) return [];

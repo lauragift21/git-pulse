@@ -1,4 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  type RefObject,
+} from "react";
 import {
   Search,
   Star,
@@ -57,6 +63,7 @@ export function Setup({ onComplete }: SetupProps) {
   const [searchResults, setSearchResults] = useState<RepoResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchRequestIdRef = useRef(0);
 
   const handleConnect = useCallback(async () => {
     const trimmed = tokenInput.trim();
@@ -101,14 +108,22 @@ export function Setup({ onComplete }: SetupProps) {
 
     setIsSearching(true);
 
+    const currentRequestId = ++searchRequestIdRef.current;
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const results = await searchRepos(query);
-        setSearchResults(results);
+        // Only update if this is still the latest request
+        if (currentRequestId === searchRequestIdRef.current) {
+          setSearchResults(results);
+        }
       } catch {
-        setSearchResults([]);
+        if (currentRequestId === searchRequestIdRef.current) {
+          setSearchResults([]);
+        }
       } finally {
-        setIsSearching(false);
+        if (currentRequestId === searchRequestIdRef.current) {
+          setIsSearching(false);
+        }
       }
     }, 400);
   }, []);
@@ -146,7 +161,7 @@ export function Setup({ onComplete }: SetupProps) {
       {/* Background gradient accents */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-accent-blue/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent-purple/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent-primary/5 rounded-full blur-3xl" />
       </div>
 
       <div className="w-full max-w-xl relative z-10">
@@ -387,7 +402,7 @@ export function Setup({ onComplete }: SetupProps) {
                     <button
                       type="button"
                       onClick={() => removeRepo(name)}
-                      className="ml-1 rounded-full hover:bg-blue-500/20 transition-colors cursor-pointer"
+                      className="ml-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -431,7 +446,7 @@ function StepIndicator({
       <span
         className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold transition-colors duration-300 ${
           complete
-            ? "bg-accent-blue text-white"
+            ? "bg-accent-blue text-text-inverse"
             : active
               ? "border-2 border-accent-blue text-accent-blue"
               : "border-2 border-border-primary text-text-tertiary"

@@ -40,9 +40,9 @@ export function AvatarGroup({
 
   return (
     <div className="flex -space-x-1.5">
-      {visible.map((avatar, i) => (
+      {visible.map((avatar) => (
         <Avatar
-          key={i}
+          key={avatar.alt}
           src={avatar.src}
           alt={avatar.alt}
           size={size}

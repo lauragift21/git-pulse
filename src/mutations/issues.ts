@@ -104,10 +104,14 @@ export const assignIssueAction = createOptimisticAction<AssignIssueVars>({
       draft.assignees = assignees;
     });
   },
-  mutationFn: async ({ repoFullName, issueNumber, assignee }) => {
-    await updateIssue(repoFullName, issueNumber, {
-      assignees: [assignee.login],
-    });
+  mutationFn: async ({ repoFullName, issueNumber, issueId, assignee }) => {
+    // Collect existing assignees to avoid replacing them
+    const existing = issueCollection.state.get(issueId);
+    const existingLogins = (existing?.assignees ?? []).map(
+      (a: { login: string }) => a.login,
+    );
+    const allLogins = [...new Set([...existingLogins, assignee.login])];
+    await updateIssue(repoFullName, issueNumber, { assignees: allLogins });
     await issueCollection.utils.refetch();
   },
 });

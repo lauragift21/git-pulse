@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useLiveQuery, eq } from "@tanstack/react-db";
+import { useLiveQuery } from "@tanstack/react-db";
 import {
   AreaChart,
   Area,
@@ -17,10 +17,10 @@ import {
   ExternalLink,
   TrendingUp,
 } from "lucide-react";
-import { repositoryCollection } from "@/collections/repositories";
-import { issueCollection } from "@/collections/issues";
-import { pullRequestCollection } from "@/collections/pull-requests";
-import { eventCollection } from "@/collections/events";
+import { allReposByStars } from "@/queries/repositories";
+import { allEvents } from "@/queries/events";
+import { openIssues } from "@/queries/issues";
+import { openPRs } from "@/queries/pull-requests";
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -94,34 +94,13 @@ function SparklineTooltip({
 export function Dashboard() {
   /* -- Live queries -------------------------------------------------------- */
 
-  const { data: repoRows } = useLiveQuery(
-    (q) =>
-      q
-        .from({ repo: repositoryCollection })
-        .orderBy(({ repo }) => repo.stargazers_count, "desc"),
-    [],
-  );
+  const { data: repoRows } = useLiveQuery(allReposByStars, []);
 
-  const { data: openIssueRows } = useLiveQuery(
-    (q) =>
-      q
-        .from({ issue: issueCollection })
-        .where(({ issue }) => eq(issue.state, "open")),
-    [],
-  );
+  const { data: openIssueRows } = useLiveQuery(openIssues, []);
 
-  const { data: openPrRows } = useLiveQuery(
-    (q) =>
-      q
-        .from({ pr: pullRequestCollection })
-        .where(({ pr }) => eq(pr.state, "open")),
-    [],
-  );
+  const { data: openPrRows } = useLiveQuery(openPRs, []);
 
-  const { data: eventRows } = useLiveQuery(
-    (q) => q.from({ event: eventCollection }),
-    [],
-  );
+  const { data: eventRows } = useLiveQuery(allEvents, []);
 
   /* -- Derived data -------------------------------------------------------- */
 
@@ -241,8 +220,16 @@ export function Dashboard() {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="0%" stopColor="#000000" stopOpacity={0.15} />
-                    <stop offset="100%" stopColor="#000000" stopOpacity={0} />
+                    <stop
+                      offset="0%"
+                      stopColor="var(--color-text-primary)"
+                      stopOpacity={0.15}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="var(--color-text-primary)"
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -263,7 +250,7 @@ export function Dashboard() {
                 <Area
                   type="monotone"
                   dataKey="count"
-                  stroke="#000000"
+                  stroke="var(--color-text-primary)"
                   strokeWidth={2}
                   fill="url(#sparklineGradient)"
                 />

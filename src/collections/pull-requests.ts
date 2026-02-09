@@ -10,7 +10,7 @@ export const pullRequestCollection = createCollection(
     id: "pull-requests",
     schema: pullRequestSchema,
     getKey: (pr: PullRequest) => pr.id,
-    queryKey: ["pull-requests"],
+    queryKey: ["pull-requests", getTrackedRepos()],
     queryFn: async (): Promise<PullRequest[]> => {
       const tracked = getTrackedRepos();
       if (tracked.length === 0) return [];

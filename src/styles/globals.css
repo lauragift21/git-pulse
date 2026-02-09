@@ -21,10 +21,7 @@
 
   --color-accent-blue: #000000;
   --color-accent-green: #000000;
-  --color-accent-purple: #000000;
-  --color-accent-orange: #525252;
   --color-accent-red: #000000;
-  --color-accent-pink: #525252;
 
   --color-accent-primary: #000000;
 
@@ -68,10 +65,7 @@ body {
 
   --color-accent-blue: #ffffff;
   --color-accent-green: #ffffff;
-  --color-accent-purple: #ffffff;
-  --color-accent-orange: #a3a3a3;
   --color-accent-red: #ffffff;
-  --color-accent-pink: #a3a3a3;
 
   --color-accent-primary: #ffffff;
 
@@ -100,8 +94,23 @@ body {
   background: var(--color-text-tertiary);
 }
 
-/* Smooth transitions for theme switching */
-* {
+/* Smooth transitions for theme switching — scoped to avoid SVG/chart perf hits */
+body,
+header,
+aside,
+main,
+nav,
+section,
+div,
+button,
+a,
+input,
+select,
+textarea,
+table,
+tr,
+td,
+th {
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease;

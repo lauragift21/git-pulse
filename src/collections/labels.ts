@@ -17,6 +17,6 @@ export const labelCollection = createCollection(
       return fetchAllLabels(tracked);
     },
     queryClient,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
   }),
 );

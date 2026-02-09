@@ -15,7 +15,7 @@ import { PullRequests } from "@/pages/PullRequests";
 import { Contributors } from "@/pages/Contributors";
 
 function AppContent() {
-  const { isAuthenticated, removeToken } = useGitHubToken();
+  const { isAuthenticated, removeToken, refreshToken } = useGitHubToken();
   const { hasRepos } = useTrackedRepos();
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
   const [setupComplete, setSetupComplete] = useState(
@@ -23,10 +23,14 @@ function AppContent() {
   );
 
   const handleSetupComplete = useCallback(() => {
+    // Re-sync token state from localStorage so isAuthenticated is up-to-date.
+    // Setup and AppContent each have independent useGitHubToken() instances,
+    // so the token saved during OAuth may not be reflected in App's state yet.
+    refreshToken();
     // Invalidate all queries so collections refetch with the new token/repos
     queryClient.invalidateQueries();
     setSetupComplete(true);
-  }, []);
+  }, [refreshToken]);
 
   const handleLogout = () => {
     removeToken();

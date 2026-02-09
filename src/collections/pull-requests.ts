@@ -17,6 +17,6 @@ export const pullRequestCollection = createCollection(
       return fetchAllPullRequests(tracked);
     },
     queryClient,
-    staleTime: 3 * 60 * 1000,
+    staleTime: 60 * 1000,
   }),
 );

@@ -56,6 +56,11 @@ export function useGitHubToken() {
     setOauthError(null);
   }, []);
 
+  /** Re-read the token from localStorage into React state. */
+  const refreshToken = useCallback(() => {
+    setTokenState(getToken());
+  }, []);
+
   return {
     token,
     isAuthenticated: !!token,
@@ -63,5 +68,6 @@ export function useGitHubToken() {
     saveToken,
     removeToken,
     clearOauthError,
+    refreshToken,
   };
 }

@@ -19,6 +19,6 @@ export const issueCollection = createCollection(
       return issues.map((issue) => ({ ...issue, priority: 0 }));
     },
     queryClient,
-    staleTime: 3 * 60 * 1000,
+    staleTime: 60 * 1000,
   }),
 );

@@ -1,11 +1,6 @@
-import { Moon, Sun, RefreshCw } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useDarkMode } from "@/hooks/useDarkMode";
-import { repositoryCollection } from "@/collections/repositories";
-import { issueCollection } from "@/collections/issues";
-import { pullRequestCollection } from "@/collections/pull-requests";
-import { eventCollection } from "@/collections/events";
-import { useState } from "react";
 
 interface HeaderProps {
   title: string;
@@ -14,23 +9,6 @@ interface HeaderProps {
 
 export function Header({ title, subtitle }: HeaderProps) {
   const { isDark, toggle } = useDarkMode();
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await Promise.all([
-        repositoryCollection.utils.refetch(),
-        issueCollection.utils.refetch(),
-        pullRequestCollection.utils.refetch(),
-        eventCollection.utils.refetch(),
-      ]);
-    } catch {
-      // Silently handle — individual errors are managed by TanStack Query
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   return (
     <header className="flex items-center justify-between border-b border-border-primary bg-bg-primary px-6 py-4">
@@ -41,10 +19,6 @@ export function Header({ title, subtitle }: HeaderProps) {
         )}
       </div>
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={handleRefresh}>
-          <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-          Refresh
-        </Button>
         <Button
           variant="ghost"
           size="sm"

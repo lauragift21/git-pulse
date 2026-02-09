@@ -17,6 +17,6 @@ export const eventCollection = createCollection(
       return fetchAllEvents(tracked);
     },
     queryClient,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
   }),
 );

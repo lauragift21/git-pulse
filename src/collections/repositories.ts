@@ -19,6 +19,6 @@ export const repositoryCollection = createCollection(
       return repos.map((repo) => ({ ...repo, starred_by_me: false }));
     },
     queryClient,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   }),
 );

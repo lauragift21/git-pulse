@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { Page } from "@/components/layout/Sidebar";
 
+import { LandingPage } from "@/pages/LandingPage";
 import { Setup } from "@/pages/Setup";
 import { Dashboard } from "@/pages/Dashboard";
 import { ActivityFeed } from "@/pages/ActivityFeed";
@@ -21,6 +22,8 @@ function AppContent() {
   const [setupComplete, setSetupComplete] = useState(
     isAuthenticated && hasRepos,
   );
+  // Show landing page first unless user has already authenticated (e.g. OAuth redirect)
+  const [showLanding, setShowLanding] = useState(!isAuthenticated);
 
   const handleSetupComplete = useCallback(() => {
     // Re-sync token state from localStorage so isAuthenticated is up-to-date.
@@ -35,7 +38,13 @@ function AppContent() {
   const handleLogout = () => {
     removeToken();
     setSetupComplete(false);
+    setShowLanding(true);
   };
+
+  // Show landing page for new visitors
+  if (showLanding && !setupComplete && !isAuthenticated) {
+    return <LandingPage onGetStarted={() => setShowLanding(false)} />;
+  }
 
   // Show setup if not authenticated or no repos tracked yet
   if (!setupComplete || !isAuthenticated) {

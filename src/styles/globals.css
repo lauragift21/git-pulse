@@ -38,6 +38,7 @@ html {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -92,6 +93,97 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-tertiary);
+}
+
+/* ─── Landing page animations ─────────────────────────────────────── */
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.05);
+  }
+}
+
+@keyframes landing-float-delayed {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-15px) scale(1.02);
+  }
+}
+
+@keyframes landing-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  75%,
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+@keyframes landing-pulse-slow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes landing-bar-grow {
+  0% {
+    transform: scaleY(0);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes landing-fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.landing-float {
+  animation: landing-float 6s ease-in-out infinite;
+}
+
+.landing-float-delayed {
+  animation: landing-float-delayed 8s ease-in-out 1s infinite;
+}
+
+.landing-ping {
+  animation: landing-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.landing-pulse-slow {
+  animation: landing-pulse-slow 4s ease-in-out infinite;
+}
+
+.landing-bar-grow {
+  transform-origin: bottom;
+  animation: landing-bar-grow 0.6s ease-out forwards;
+  transform: scaleY(0);
+}
+
+.landing-fade-in-up {
+  animation: landing-fade-in-up 0.5s ease-out forwards;
+  opacity: 0;
 }
 
 /* Smooth transitions for theme switching — scoped to avoid SVG/chart perf hits */

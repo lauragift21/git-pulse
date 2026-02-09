@@ -6,6 +6,8 @@ import {
   Users,
   Settings,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -21,6 +23,8 @@ interface SidebarProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
   onLogout: () => void;
+  collapsed: boolean;
+  onToggle: () => void;
 }
 
 interface NavItemProps {
@@ -28,26 +32,36 @@ interface NavItemProps {
   label: string;
   active: boolean;
   onClick: () => void;
+  collapsed: boolean;
 }
 
-function NavItem({ icon, label, active, onClick }: NavItemProps) {
+function NavItem({ icon, label, active, onClick, collapsed }: NavItemProps) {
   return (
     <button
       onClick={onClick}
       aria-current={active ? "page" : undefined}
+      title={collapsed ? label : undefined}
       className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-100 cursor-pointer ${
+        collapsed ? "justify-center" : ""
+      } ${
         active
           ? "bg-black/10 text-text-primary dark:bg-white/10 dark:text-white"
           : "text-text-tertiary hover:bg-black/5 hover:text-text-primary dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-neutral-200"
       }`}
     >
       {icon}
-      <span>{label}</span>
+      {!collapsed && <span>{label}</span>}
     </button>
   );
 }
 
-export function Sidebar({ currentPage, onNavigate, onLogout }: SidebarProps) {
+export function Sidebar({
+  currentPage,
+  onNavigate,
+  onLogout,
+  collapsed,
+  onToggle,
+}: SidebarProps) {
   const navItems: { page: Page; icon: ReactNode; label: string }[] = [
     {
       page: "dashboard",
@@ -69,19 +83,27 @@ export function Sidebar({ currentPage, onNavigate, onLogout }: SidebarProps) {
   ];
 
   return (
-    <aside className="flex h-screen w-56 flex-col bg-bg-sidebar border-r border-border-primary">
+    <aside
+      className={`flex h-screen flex-col bg-bg-sidebar border-r border-border-primary transition-all duration-200 ${
+        collapsed ? "w-16" : "w-56"
+      }`}
+    >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-black dark:bg-white">
+      <div
+        className={`flex items-center ${collapsed ? "justify-center px-3" : "gap-2.5 px-5"} py-5`}
+      >
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-black dark:bg-white">
           <Activity size={14} className="text-white dark:text-black" />
         </div>
-        <span className="text-base font-bold text-text-primary tracking-tight">
-          GitPulse
-        </span>
+        {!collapsed && (
+          <span className="text-base font-bold text-text-primary tracking-tight">
+            GitPulse
+          </span>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 px-3 mt-2">
+      <nav className={`flex-1 space-y-0.5 ${collapsed ? "px-2" : "px-3"} mt-2`}>
         {navItems.map((item) => (
           <NavItem
             key={item.page}
@@ -89,24 +111,43 @@ export function Sidebar({ currentPage, onNavigate, onLogout }: SidebarProps) {
             label={item.label}
             active={currentPage === item.page}
             onClick={() => onNavigate(item.page)}
+            collapsed={collapsed}
           />
         ))}
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border-primary px-3 py-3 space-y-0.5">
+      <div
+        className={`border-t border-border-primary ${collapsed ? "px-2" : "px-3"} py-3 space-y-0.5`}
+      >
         <NavItem
           icon={<Settings size={18} />}
           label="Settings"
           active={currentPage === "settings"}
           onClick={() => onNavigate("settings")}
+          collapsed={collapsed}
         />
         <NavItem
           icon={<LogOut size={18} />}
           label="Sign Out"
           active={false}
           onClick={onLogout}
+          collapsed={collapsed}
         />
+
+        {/* Collapse toggle */}
+        <button
+          onClick={onToggle}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-100 cursor-pointer justify-center text-text-tertiary hover:bg-black/5 hover:text-text-primary dark:text-neutral-400 dark:hover:bg-white/5 dark:hover:text-neutral-200 mt-1"
+        >
+          {collapsed ? (
+            <PanelLeftOpen size={18} />
+          ) : (
+            <PanelLeftClose size={18} />
+          )}
+          {!collapsed && <span className="flex-1 text-left">Collapse</span>}
+        </button>
       </div>
     </aside>
   );

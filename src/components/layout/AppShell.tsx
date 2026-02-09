@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Sidebar, type Page } from "./Sidebar";
 
 interface AppShellProps {
@@ -14,12 +14,16 @@ export function AppShell({
   onLogout,
   children,
 }: AppShellProps) {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <div className="flex h-screen overflow-hidden bg-bg-secondary">
       <Sidebar
         currentPage={currentPage}
         onNavigate={onNavigate}
         onLogout={onLogout}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((prev) => !prev)}
       />
       <main className="flex-1 overflow-auto">{children}</main>
     </div>

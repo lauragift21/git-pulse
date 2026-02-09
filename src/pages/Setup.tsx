@@ -1,10 +1,4 @@
-import {
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-  type RefObject,
-} from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Search,
   Star,
@@ -17,7 +11,6 @@ import {
   BookMarked,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
@@ -49,13 +42,13 @@ interface RepoResult {
 }
 
 export function Setup({ onComplete }: SetupProps) {
-  const { saveToken } = useGitHubToken();
+  const { isAuthenticated, oauthError, clearOauthError, removeToken } =
+    useGitHubToken();
   const { repos: trackedRepos, addRepo, removeRepo } = useTrackedRepos();
 
   // Step 1 state
-  const [tokenInput, setTokenInput] = useState("");
   const [isValidating, setIsValidating] = useState(false);
-  const [tokenError, setTokenError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(oauthError);
   const [user, setUser] = useState<UserInfo | null>(null);
 
   // Step 2 state
@@ -65,33 +58,53 @@ export function Setup({ onComplete }: SetupProps) {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRequestIdRef = useRef(0);
 
-  const handleConnect = useCallback(async () => {
-    const trimmed = tokenInput.trim();
-    if (!trimmed) return;
-
-    setIsValidating(true);
-    setTokenError(null);
-
-    // Save the token first so the API client picks it up
-    saveToken(trimmed);
-
-    try {
-      const userInfo = await fetchUserInfo();
-      setUser(userInfo);
-    } catch (err) {
-      // Clear the bad token
-      saveToken("");
-      setTokenError(
-        err instanceof Error
-          ? err.message.includes("401")
-            ? "Invalid token. Please check your token and try again."
-            : err.message
-          : "Failed to validate token.",
-      );
-    } finally {
-      setIsValidating(false);
+  // Clear the OAuth error from the hook once we've captured it
+  useEffect(() => {
+    if (oauthError) {
+      setAuthError(oauthError);
+      clearOauthError();
     }
-  }, [tokenInput, saveToken]);
+  }, [oauthError, clearOauthError]);
+
+  // Auto-validate token on mount if we already have one (e.g. after OAuth redirect)
+  useEffect(() => {
+    if (!isAuthenticated || user) return;
+
+    let cancelled = false;
+    setIsValidating(true);
+    setAuthError(null);
+
+    fetchUserInfo()
+      .then((userInfo) => {
+        if (!cancelled) setUser(userInfo);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          // Token is invalid — clear it so the user can try again
+          removeToken();
+          setAuthError(
+            err instanceof Error
+              ? err.message.includes("401")
+                ? "Authentication failed. Please sign in again."
+                : err.message
+              : "Failed to validate token.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsValidating(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user, removeToken]);
+
+  const handleSignIn = useCallback(() => {
+    setAuthError(null);
+    // Navigate to the Worker's OAuth login endpoint
+    window.location.href = "/auth/login";
+  }, []);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -197,72 +210,48 @@ export function Setup({ onComplete }: SetupProps) {
           />
         </div>
 
-        {/* Step 1: Token */}
+        {/* Step 1: GitHub OAuth */}
         <Card padding="lg" className="mb-4">
           <div className="flex items-center gap-2 mb-4">
             <span className="flex items-center justify-center w-6 h-6 rounded-full bg-accent-blue/10 text-accent-blue text-xs font-bold">
               1
             </span>
             <h2 className="text-sm font-semibold text-text-primary">
-              GitHub Personal Access Token
+              Connect GitHub Account
             </h2>
           </div>
 
           {!isStep1Complete ? (
             <div className="space-y-3">
-              <Input
-                id="token"
-                type="password"
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                value={tokenInput}
-                onChange={(e) => {
-                  setTokenInput(e.target.value);
-                  setTokenError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConnect();
-                }}
-              />
-
-              {tokenError && (
-                <div className="flex items-start gap-2 text-accent-red text-xs">
-                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  <span>{tokenError}</span>
+              {isValidating ? (
+                <div className="flex items-center justify-center gap-2 py-4 text-text-secondary text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Connecting to GitHub...
                 </div>
+              ) : (
+                <>
+                  {authError && (
+                    <div className="flex items-start gap-2 text-accent-red text-xs">
+                      <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span>{authError}</span>
+                    </div>
+                  )}
+
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                    onClick={handleSignIn}
+                  >
+                    <Github className="w-4 h-4" />
+                    Sign in with GitHub
+                  </Button>
+
+                  <p className="text-xs text-text-tertiary text-center">
+                    You'll be redirected to GitHub to authorize access.
+                  </p>
+                </>
               )}
-
-              <p className="text-xs text-text-tertiary">
-                Needs <code className="text-text-secondary">repo</code> and{" "}
-                <code className="text-text-secondary">read:user</code> scopes.{" "}
-                <a
-                  href="https://github.com/settings/tokens/new"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-accent-blue hover:underline"
-                >
-                  Create a token
-                </a>
-              </p>
-
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full"
-                disabled={!tokenInput.trim() || isValidating}
-                onClick={handleConnect}
-              >
-                {isValidating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Validating...
-                  </>
-                ) : (
-                  <>
-                    Connect
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </Button>
             </div>
           ) : (
             <div className="flex items-center gap-3 rounded-lg bg-accent-green/5 border border-accent-green/20 p-3">

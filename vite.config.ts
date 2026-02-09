@@ -9,4 +9,13 @@ export default defineConfig({
       "@": "/src",
     },
   },
+  server: {
+    proxy: {
+      // Proxy OAuth routes to the Wrangler dev server during local development
+      "/auth": {
+        target: "http://localhost:8787",
+        changeOrigin: true,
+      },
+    },
+  },
 });

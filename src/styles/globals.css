@@ -186,6 +186,25 @@ body {
   opacity: 0;
 }
 
+/* Respect prefers-reduced-motion for accessibility (WCAG 2.1 SC 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  .landing-float,
+  .landing-float-delayed,
+  .landing-ping,
+  .landing-pulse-slow,
+  .landing-bar-grow,
+  .landing-fade-in-up {
+    animation: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
 /* Smooth transitions for theme switching — scoped to avoid SVG/chart perf hits */
 body,
 header,

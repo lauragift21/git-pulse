@@ -16,7 +16,7 @@ interface Env {
 
 const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
-const OAUTH_SCOPES = "repo read:user";
+const OAUTH_SCOPES = "public_repo read:user";
 const STATE_COOKIE = "gitpulse_oauth_state";
 
 /**
@@ -71,7 +71,7 @@ export default {
         status: 302,
         headers: {
           Location: authorizeUrl.toString(),
-          "Set-Cookie": `${STATE_COOKIE}=${state}; HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=600`,
+          "Set-Cookie": `${STATE_COOKIE}=${state}; HttpOnly; Secure; SameSite=Strict; Path=/auth; Max-Age=600`,
         },
       });
     }
@@ -116,10 +116,12 @@ export default {
       // Exchange code for access token
       // Use form-urlencoded (GitHub's recommended format) with Accept: application/json
       try {
+        const redirectUri = `${origin}/auth/callback`;
         const body = new URLSearchParams({
           client_id: env.GITHUB_CLIENT_ID,
           client_secret: env.GITHUB_CLIENT_SECRET,
           code,
+          redirect_uri: redirectUri,
         });
 
         // Retry up to 3 times to handle transient GitHub 5xx errors
@@ -198,7 +200,7 @@ export default {
           headers: {
             Location: `${origin}/#token=${tokenData.access_token}`,
             // Clear the state cookie
-            "Set-Cookie": `${STATE_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=0`,
+            "Set-Cookie": `${STATE_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/auth; Max-Age=0`,
           },
         });
       } catch {
@@ -212,6 +214,27 @@ export default {
     // ---------------------
     // All other requests: serve static SPA assets
     // ---------------------
-    return env.ASSETS.fetch(request);
+    const assetResponse = await env.ASSETS.fetch(request);
+
+    // Add security headers to HTML responses
+    const contentType = assetResponse.headers.get("Content-Type") || "";
+    if (contentType.includes("text/html")) {
+      const headers = new Headers(assetResponse.headers);
+      headers.set(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://avatars.githubusercontent.com; connect-src 'self' https://api.github.com; frame-ancestors 'none';",
+      );
+      headers.set("X-Content-Type-Options", "nosniff");
+      headers.set("X-Frame-Options", "DENY");
+      headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+      return new Response(assetResponse.body, {
+        status: assetResponse.status,
+        statusText: assetResponse.statusText,
+        headers,
+      });
+    }
+
+    return assetResponse;
   },
 };

@@ -10,7 +10,7 @@ export const repositoryCollection = createCollection(
     id: "repositories",
     schema: repositorySchema,
     getKey: (repo: Repository) => repo.id,
-    queryKey: ["repositories", getTrackedRepos()],
+    queryKey: () => ["repositories", getTrackedRepos()],
     queryFn: async (): Promise<Repository[]> => {
       const tracked = getTrackedRepos();
       if (tracked.length === 0) return [];

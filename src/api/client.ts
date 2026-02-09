@@ -1,6 +1,14 @@
-import { getToken } from "@/lib/github";
+import { getToken, validateRepoFullName } from "@/lib/github";
 
 const BASE_URL = "https://api.github.com";
+
+/**
+ * Validates a repo full name before using it in an API path.
+ * Prevents path injection from malformed localStorage values.
+ */
+export function safeRepoPath(fullName: string): string {
+  return validateRepoFullName(fullName);
+}
 
 export class GitHubApiError extends Error {
   status: number;

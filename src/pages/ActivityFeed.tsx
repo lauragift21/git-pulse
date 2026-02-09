@@ -142,8 +142,14 @@ function getEventDescription(event: Event): string {
   switch (event.type) {
     case "PushEvent": {
       const commits = payload.commits as unknown[] | undefined;
-      const count = commits?.length ?? 0;
-      return `pushed ${count} commit${count !== 1 ? "s" : ""} to ${event.repo.name}`;
+      const size = payload.size as number | undefined;
+      const count = commits?.length ?? size ?? 0;
+      if (count > 0) {
+        return `pushed ${count} commit${count !== 1 ? "s" : ""} to ${event.repo.name}`;
+      }
+      const ref = payload.ref as string | undefined;
+      const branch = ref?.replace("refs/heads/", "") ?? "";
+      return `pushed to ${branch ? `${branch} in ` : ""}${event.repo.name}`;
     }
     case "PullRequestEvent": {
       const action = (payload.action as string) ?? "opened";

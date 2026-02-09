@@ -19,6 +19,43 @@ export interface GitHubEvent {
   created_at: string;
 }
 
+interface CompareResponse {
+  total_commits: number;
+}
+
+/**
+ * Enrich PushEvent payloads with commit counts using the Compare API.
+ * Uses `before...head` SHAs already present in the payload.
+ * Fails silently — events without enrichment just won't show a count.
+ */
+async function enrichPushEvents(events: GitHubEvent[]): Promise<GitHubEvent[]> {
+  const pushEvents = events.filter(
+    (e) => e.type === "PushEvent" && e.payload.before && e.payload.head,
+  );
+
+  if (pushEvents.length === 0) return events;
+
+  // Fetch commit counts in parallel (with per_page=1 to minimize response size)
+  const enrichResults = await Promise.allSettled(
+    pushEvents.map((e) =>
+      githubFetch<CompareResponse>(
+        `/repos/${e.repo.name}/compare/${e.payload.before}...${e.payload.head}`,
+        { params: { per_page: 1 } },
+      ),
+    ),
+  );
+
+  // Inject the count back into the payload
+  pushEvents.forEach((e, i) => {
+    const result = enrichResults[i];
+    if (result.status === "fulfilled") {
+      e.payload.size = result.value.total_commits;
+    }
+  });
+
+  return events;
+}
+
 /**
  * Fetch events for a single repo, paginating up to `maxPages` pages
  * (100 events per page). Stops early if the oldest event on a page
@@ -49,7 +86,8 @@ export async function fetchRepoEvents(
     if (events.length < 100) break;
   }
 
-  return allEvents;
+  // Enrich PushEvents with commit counts from the Compare API
+  return enrichPushEvents(allEvents);
 }
 
 export async function fetchAllEvents(

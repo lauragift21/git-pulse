@@ -8,6 +8,7 @@ import {
   Users,
   Zap,
   Eye,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useDarkMode } from "@/hooks/useDarkMode";
@@ -17,7 +18,7 @@ interface LandingPageProps {
 }
 
 /** Intersection Observer hook for scroll-triggered animations */
-function useInView(options?: IntersectionObserverInit) {
+function useInView(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
   const [isInView, setIsInView] = useState(false);
 
@@ -25,16 +26,19 @@ function useInView(options?: IntersectionObserverInit) {
     const el = ref.current;
     if (!el) return;
 
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIsInView(true);
-        observer.unobserve(el);
-      }
-    }, options);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.unobserve(el);
+        }
+      },
+      { threshold },
+    );
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [options]);
+  }, [threshold]);
 
   return { ref, isInView };
 }
@@ -64,10 +68,21 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               GitPulse
             </span>
           </div>
-          <Button variant="primary" size="md" onClick={onGetStarted}>
-            Get Started
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <a
+              href="https://github.com/lauragift21/git-pulse"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-text-secondary hover:text-text-primary rounded-lg border border-border-primary bg-bg-card hover:bg-bg-hover transition-colors duration-150"
+            >
+              <Star className="w-3.5 h-3.5" />
+              Star on GitHub
+            </a>
+            <Button variant="primary" size="md" onClick={onGetStarted}>
+              Get Started
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       </nav>
 
@@ -353,7 +368,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             <StepRow
               step={1}
               title="Connect your GitHub account"
-              description="Sign in with GitHub OAuth. We only request read access to your public and private repositories."
+              description="Sign in with GitHub OAuth. We only request read access to your public repositories."
               delay={0}
             />
             <StepRow
@@ -403,7 +418,7 @@ function SectionHeader({
   title: string;
   description: string;
 }) {
-  const { ref, isInView } = useInView({ threshold: 0.3 });
+  const { ref, isInView } = useInView(0.3);
 
   return (
     <div ref={ref} className="text-center">
@@ -437,7 +452,7 @@ function FeatureCard({
   description: string;
   delay: number;
 }) {
-  const { ref, isInView } = useInView({ threshold: 0.2 });
+  const { ref, isInView } = useInView(0.2);
 
   return (
     <div
@@ -467,7 +482,7 @@ function StepRow({
   description: string;
   delay: number;
 }) {
-  const { ref, isInView } = useInView({ threshold: 0.3 });
+  const { ref, isInView } = useInView(0.3);
 
   return (
     <div

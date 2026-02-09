@@ -1,6 +1,16 @@
 const TOKEN_KEY = "gitpulse_token";
 const REPOS_KEY = "gitpulse_repos";
 
+/** Validates that a string matches the `owner/repo` format. */
+const REPO_FULL_NAME_RE = /^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/;
+
+export function validateRepoFullName(fullName: string): string {
+  if (!REPO_FULL_NAME_RE.test(fullName)) {
+    throw new Error(`Invalid repository name: ${fullName}`);
+  }
+  return fullName;
+}
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -28,6 +38,7 @@ export function setTrackedRepos(repos: string[]): void {
 }
 
 export function addTrackedRepo(fullName: string): void {
+  validateRepoFullName(fullName);
   const repos = getTrackedRepos();
   if (!repos.includes(fullName)) {
     repos.push(fullName);
@@ -42,5 +53,6 @@ export function removeTrackedRepo(fullName: string): void {
 
 /** Extract "owner/repo" from a GitHub API repository URL. */
 export function extractRepoFullName(repoUrl: string): string {
-  return repoUrl.replace("https://api.github.com/repos/", "");
+  const match = repoUrl.match(/repos\/([^/]+\/[^/]+)/);
+  return match?.[1] ?? repoUrl;
 }

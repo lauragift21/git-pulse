@@ -1,19 +1,48 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, lazy, Suspense } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { useGitHubToken } from "@/hooks/useGitHubToken";
 import { useTrackedRepos } from "@/hooks/useTrackedRepos";
 import { AppShell } from "@/components/layout/AppShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Skeleton } from "@/components/ui/Skeleton";
 import type { Page } from "@/components/layout/Sidebar";
 
+// Eagerly loaded (part of entry flow)
 import { LandingPage } from "@/pages/LandingPage";
 import { Setup } from "@/pages/Setup";
-import { Dashboard } from "@/pages/Dashboard";
-import { ActivityFeed } from "@/pages/ActivityFeed";
-import { Issues } from "@/pages/Issues";
-import { PullRequests } from "@/pages/PullRequests";
-import { Contributors } from "@/pages/Contributors";
+
+// Lazy-loaded page components for code splitting
+const Dashboard = lazy(() =>
+  import("@/pages/Dashboard").then((m) => ({ default: m.Dashboard })),
+);
+const ActivityFeed = lazy(() =>
+  import("@/pages/ActivityFeed").then((m) => ({ default: m.ActivityFeed })),
+);
+const Issues = lazy(() =>
+  import("@/pages/Issues").then((m) => ({ default: m.Issues })),
+);
+const PullRequests = lazy(() =>
+  import("@/pages/PullRequests").then((m) => ({ default: m.PullRequests })),
+);
+const Contributors = lazy(() =>
+  import("@/pages/Contributors").then((m) => ({ default: m.Contributors })),
+);
+
+function PageLoader() {
+  return (
+    <div className="p-6 space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-4 gap-4">
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+      </div>
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
+  );
+}
 
 function AppContent() {
   const { isAuthenticated, removeToken, refreshToken } = useGitHubToken();
@@ -35,20 +64,29 @@ function AppContent() {
     setSetupComplete(true);
   }, [refreshToken]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     removeToken();
+    queryClient.clear();
     setSetupComplete(false);
     setShowLanding(true);
-  };
+  }, [removeToken]);
 
   // Show landing page for new visitors
   if (showLanding && !setupComplete && !isAuthenticated) {
-    return <LandingPage onGetStarted={() => setShowLanding(false)} />;
+    return (
+      <ErrorBoundary>
+        <LandingPage onGetStarted={() => setShowLanding(false)} />
+      </ErrorBoundary>
+    );
   }
 
   // Show setup if not authenticated or no repos tracked yet
   if (!setupComplete || !isAuthenticated) {
-    return <Setup onComplete={handleSetupComplete} />;
+    return (
+      <ErrorBoundary>
+        <Setup onComplete={handleSetupComplete} />
+      </ErrorBoundary>
+    );
   }
 
   const renderPage = () => {
@@ -68,6 +106,7 @@ function AppContent() {
         return (
           <Setup
             onComplete={() => {
+              refreshToken();
               queryClient.invalidateQueries();
               setCurrentPage("dashboard");
             }}
@@ -84,7 +123,9 @@ function AppContent() {
       onNavigate={setCurrentPage}
       onLogout={handleLogout}
     >
-      <ErrorBoundary>{renderPage()}</ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>{renderPage()}</Suspense>
+      </ErrorBoundary>
     </AppShell>
   );
 }

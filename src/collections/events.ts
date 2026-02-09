@@ -10,7 +10,7 @@ export const eventCollection = createCollection(
     id: "events",
     schema: eventSchema,
     getKey: (event: Event) => event.id,
-    queryKey: ["events", getTrackedRepos()],
+    queryKey: () => ["events", getTrackedRepos()],
     queryFn: async (): Promise<Event[]> => {
       const tracked = getTrackedRepos();
       if (tracked.length === 0) return [];

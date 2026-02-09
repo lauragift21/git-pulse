@@ -19,12 +19,37 @@ export interface GitHubEvent {
   created_at: string;
 }
 
+/**
+ * Fetch events for a single repo, paginating up to `maxPages` pages
+ * (100 events per page). Stops early if the oldest event on a page
+ * is older than 14 days, since that's the chart window.
+ */
 export async function fetchRepoEvents(
   fullName: string,
+  maxPages = 3,
 ): Promise<GitHubEvent[]> {
-  return githubFetch<GitHubEvent[]>(`/repos/${fullName}/events`, {
-    params: { per_page: 100 },
-  });
+  const allEvents: GitHubEvent[] = [];
+  const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+
+  for (let page = 1; page <= maxPages; page++) {
+    const events = await githubFetch<GitHubEvent[]>(
+      `/repos/${fullName}/events`,
+      { params: { per_page: 100, page } },
+    );
+
+    if (events.length === 0) break;
+
+    allEvents.push(...events);
+
+    // Stop paginating once we've reached events older than 14 days
+    const oldest = events[events.length - 1];
+    if (oldest && new Date(oldest.created_at).getTime() < cutoff) break;
+
+    // GitHub caps at 10 pages / 300 events; stop if we got a short page
+    if (events.length < 100) break;
+  }
+
+  return allEvents;
 }
 
 export async function fetchAllEvents(

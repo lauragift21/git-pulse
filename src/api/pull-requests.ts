@@ -1,6 +1,5 @@
 import type { GitHubLabel, GitHubUser, GitHubMilestone } from "./issues";
 import { githubFetch } from "./client";
-import { extractRepoFullName } from "@/lib/github";
 
 export interface GitHubPullRequest {
   id: number;
@@ -27,7 +26,6 @@ export interface GitHubPullRequest {
   review_comments: number;
   commits: number;
   mergeable: boolean | null;
-  repository_url: string;
 }
 
 export async function fetchRepoPullRequests(
@@ -39,23 +37,47 @@ export async function fetchRepoPullRequests(
   });
 }
 
+/**
+ * Fetch open and closed PRs separately for each repo so that open PRs
+ * are never crowded out by a large number of recently-updated closed PRs.
+ */
 export async function fetchAllPullRequests(
   repoFullNames: string[],
 ): Promise<(GitHubPullRequest & { repository_full_name: string })[]> {
   const results = await Promise.allSettled(
-    repoFullNames.map((name) => fetchRepoPullRequests(name)),
+    repoFullNames.flatMap((name) => [
+      fetchRepoPullRequests(name, "open"),
+      fetchRepoPullRequests(name, "closed"),
+    ]),
   );
-  return results
-    .filter(
-      (r): r is PromiseFulfilledResult<GitHubPullRequest[]> =>
-        r.status === "fulfilled",
-    )
-    .flatMap((r) =>
-      r.value.map((pr) => ({
-        ...pr,
-        repository_full_name: extractRepoFullName(pr.repository_url),
-      })),
-    );
+
+  const allPRs: (GitHubPullRequest & { repository_full_name: string })[] = [];
+  const seen = new Set<number>();
+
+  repoFullNames.forEach((repoName, repoIndex) => {
+    // Two results per repo: open at 2*i, closed at 2*i+1
+    for (let offset = 0; offset < 2; offset++) {
+      const result = results[repoIndex * 2 + offset];
+      if (result.status !== "fulfilled") continue;
+      for (const pr of result.value) {
+        if (seen.has(pr.id)) continue;
+        seen.add(pr.id);
+        allPRs.push({
+          ...pr,
+          // Fields not returned by the list endpoint — default to safe values
+          additions: pr.additions ?? 0,
+          deletions: pr.deletions ?? 0,
+          changed_files: pr.changed_files ?? 0,
+          review_comments: pr.review_comments ?? 0,
+          commits: pr.commits ?? 0,
+          mergeable: pr.mergeable ?? null,
+          repository_full_name: repoName,
+        });
+      }
+    }
+  });
+
+  return allPRs;
 }
 
 export async function addPRReviewers(

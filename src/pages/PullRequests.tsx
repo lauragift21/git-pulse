@@ -113,7 +113,7 @@ function ColumnHeader({
   accentClass: string;
 }) {
   return (
-    <div className="flex items-center gap-2 px-1 pb-3">
+    <div className="flex items-center gap-2 px-1 pb-3 mb-1 border-b-2 border-border-primary">
       <span className={accentClass}>{icon}</span>
       <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
       <span className="ml-auto rounded-full bg-bg-tertiary px-2 py-0.5 text-xs font-medium text-text-secondary">
@@ -130,20 +130,39 @@ function ColumnHeader({
 function PRCard({ pr }: { pr: PullRequest }) {
   const isMerged = pr.state === "closed" && pr.merged_at !== null;
 
+  const borderClass = isMerged
+    ? "border-l-4 border-l-neutral-400 dark:border-l-neutral-500"
+    : pr.state === "closed"
+      ? "border-l-4 border-l-neutral-300 dark:border-l-neutral-600"
+      : pr.draft
+        ? "border-l-4 border-l-neutral-300 dark:border-l-neutral-600 opacity-75"
+        : "border-l-4 border-l-black dark:border-l-white";
+
   return (
-    <Card hover padding="none" className="group">
+    <Card hover padding="none" className={`group ${borderClass}`}>
       <div className="p-3.5">
         {/* Title row */}
         <div className="flex items-start gap-2 mb-2">
-          <span className="mt-0.5 shrink-0">
+          <span className="mt-0.5 shrink-0 flex items-center gap-1">
             {isMerged ? (
-              <GitMerge size={14} className="text-text-secondary" />
+              <>
+                <GitMerge size={14} className="text-text-secondary" />
+                <Badge variant="default">Merged</Badge>
+              </>
             ) : pr.state === "closed" ? (
-              <XCircle size={14} className="text-text-tertiary" />
+              <>
+                <XCircle size={14} className="text-text-tertiary" />
+                <Badge variant="default">Closed</Badge>
+              </>
             ) : pr.draft ? (
-              <GitPullRequest size={14} className="text-text-tertiary" />
+              <>
+                <GitPullRequest size={14} className="text-text-tertiary" />
+                <Badge variant="default">Draft</Badge>
+              </>
             ) : (
-              <GitPullRequest size={14} className="text-text-primary" />
+              <>
+                <GitPullRequest size={14} className="text-text-primary" />
+              </>
             )}
           </span>
           <a

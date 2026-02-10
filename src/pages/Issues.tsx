@@ -14,17 +14,15 @@ import {
 } from "lucide-react";
 import { issueCollection } from "@/collections/issues";
 import { allReposByName } from "@/queries/repositories";
-import { allLabelsByName } from "@/queries/labels";
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Avatar, AvatarGroup } from "@/components/ui/Avatar";
+import { AvatarGroup } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Select } from "@/components/ui/Select";
 import { timeAgo } from "@/lib/date";
 import { labelStyle } from "@/lib/colors";
-import { closeIssueAction, reopenIssueAction } from "@/mutations/issues";
 import type { Issue } from "@/schemas/issue";
 
 /* -------------------------------------------------------------------------- */
@@ -89,8 +87,6 @@ export function Issues() {
   const [labelFilter, setLabelFilter] = useState("all");
   const [sortField, setSortField] = useState<SortField>("updated_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-
   /* -- Queries -- */
 
   // Issues: filter by state and search using TanStack DB operators
@@ -115,20 +111,22 @@ export function Issues() {
   // Repositories for filter dropdown
   const { data: repos = [] } = useLiveQuery(allReposByName, []);
 
-  // All labels for filter dropdown
-  const { data: allLabelsRaw = [] } = useLiveQuery(allLabelsByName, []);
-
   /* -- Derived data -- */
 
-  // Deduplicate labels by name
+  // Deduplicate labels by name from the issues themselves
   const uniqueLabels = useMemo(() => {
     const seen = new Set<string>();
-    return allLabelsRaw.filter((l: { name: string }) => {
-      if (seen.has(l.name)) return false;
-      seen.add(l.name);
-      return true;
-    });
-  }, [allLabelsRaw]);
+    const labels: { name: string; color: string }[] = [];
+    for (const issue of issueRows as Issue[]) {
+      for (const label of issue.labels) {
+        if (!seen.has(label.name)) {
+          seen.add(label.name);
+          labels.push({ name: label.name, color: label.color });
+        }
+      }
+    }
+    return labels.sort((a, b) => a.name.localeCompare(b.name));
+  }, [issueRows]);
 
   // Client-side filters for repo and label (applied after TanStack DB query)
   const issues: Issue[] = useMemo(() => {
@@ -165,28 +163,6 @@ export function Issues() {
     (i) => i.state === "closed",
   ).length;
 
-  /* -- Selection helpers -- */
-
-  const allSelected =
-    issues.length > 0 && issues.every((i) => selectedIds.has(i.id));
-
-  const toggleAll = useCallback(() => {
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(issues.map((i) => i.id)));
-    }
-  }, [allSelected, issues]);
-
-  const toggleOne = useCallback((id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
   /* -- Sort handler -- */
 
   const handleSort = useCallback(
@@ -200,39 +176,6 @@ export function Issues() {
     },
     [sortField],
   );
-
-  /* -- Bulk actions -- */
-
-  const selectedIssues = useMemo(
-    () => issues.filter((i) => selectedIds.has(i.id)),
-    [issues, selectedIds],
-  );
-
-  const handleBulkClose = useCallback(() => {
-    for (const issue of selectedIssues) {
-      if (issue.state === "open") {
-        closeIssueAction({
-          issueId: issue.id,
-          repoFullName: issue.repository_full_name,
-          issueNumber: issue.number,
-        });
-      }
-    }
-    setSelectedIds(new Set());
-  }, [selectedIssues]);
-
-  const handleBulkReopen = useCallback(() => {
-    for (const issue of selectedIssues) {
-      if (issue.state === "closed") {
-        reopenIssueAction({
-          issueId: issue.id,
-          repoFullName: issue.repository_full_name,
-          issueNumber: issue.number,
-        });
-      }
-    }
-    setSelectedIds(new Set());
-  }, [selectedIssues]);
 
   /* -- Filter option lists -- */
 
@@ -365,33 +308,6 @@ export function Issues() {
           </div>
         </Card>
 
-        {/* ---- Bulk actions bar ---- */}
-        {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 rounded-lg border border-border-primary bg-bg-tertiary px-4 py-2">
-            <span className="text-sm font-medium text-text-primary">
-              {selectedIds.size} selected
-            </span>
-            <div className="h-4 w-px bg-border-primary" />
-            <Button variant="secondary" size="sm" onClick={handleBulkClose}>
-              <CheckCircle2 size={14} className="text-text-secondary" />
-              Close selected
-            </Button>
-            <Button variant="secondary" size="sm" onClick={handleBulkReopen}>
-              <CircleDot size={14} className="text-text-primary" />
-              Reopen selected
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedIds(new Set())}
-              className="ml-auto"
-            >
-              <X size={12} />
-              Deselect
-            </Button>
-          </div>
-        )}
-
         {/* ---- Issue table ---- */}
         {issues.length === 0 ? (
           <EmptyState
@@ -417,15 +333,7 @@ export function Issues() {
                 {/* Table head */}
                 <thead>
                   <tr className="border-b border-border-primary bg-bg-secondary">
-                    <th className="w-10 px-3 py-2.5 text-left">
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        onChange={toggleAll}
-                        className="rounded border-border-primary accent-black dark:accent-white cursor-pointer"
-                      />
-                    </th>
-                    <th className="w-8 px-1 py-2.5" />
+                    <th className="w-8 px-3 py-2.5" />
                     <th className="px-3 py-2.5 text-left">
                       <SortHeader
                         label="Title"
@@ -483,8 +391,6 @@ export function Issues() {
                     <IssueRow
                       key={issue.id}
                       issue={issue}
-                      selected={selectedIds.has(issue.id)}
-                      onToggle={toggleOne}
                       striped={idx % 2 === 1}
                     />
                   ))}
@@ -504,63 +410,25 @@ export function Issues() {
 
 interface IssueRowProps {
   issue: Issue;
-  selected: boolean;
-  onToggle: (id: number) => void;
   striped: boolean;
 }
 
-function IssueRow({ issue, selected, onToggle, striped }: IssueRowProps) {
+function IssueRow({ issue, striped }: IssueRowProps) {
   const isOpen = issue.state === "open";
-
-  const handleStateToggle = () => {
-    if (isOpen) {
-      closeIssueAction({
-        issueId: issue.id,
-        repoFullName: issue.repository_full_name,
-        issueNumber: issue.number,
-      });
-    } else {
-      reopenIssueAction({
-        issueId: issue.id,
-        repoFullName: issue.repository_full_name,
-        issueNumber: issue.number,
-      });
-    }
-  };
 
   return (
     <tr
       className={`group border-b border-border-primary last:border-b-0 transition-colors duration-100 ${
-        selected
-          ? "bg-bg-tertiary"
-          : striped
-            ? "bg-bg-secondary/50"
-            : "bg-bg-card"
+        striped ? "bg-bg-secondary/50" : "bg-bg-card"
       } hover:bg-bg-hover`}
     >
-      {/* Checkbox */}
-      <td className="px-3 py-2.5">
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={() => onToggle(issue.id)}
-          className="rounded border-border-primary accent-black dark:accent-white cursor-pointer"
-        />
-      </td>
-
       {/* State icon */}
-      <td className="px-1 py-2.5">
-        <button
-          onClick={handleStateToggle}
-          title={isOpen ? "Close issue" : "Reopen issue"}
-          className="cursor-pointer hover:opacity-70 transition-opacity"
-        >
-          {isOpen ? (
-            <CircleDot size={16} className="text-text-primary" />
-          ) : (
-            <CheckCircle2 size={16} className="text-text-tertiary" />
-          )}
-        </button>
+      <td className="px-3 py-2.5">
+        {isOpen ? (
+          <CircleDot size={16} className="text-text-primary" />
+        ) : (
+          <CheckCircle2 size={16} className="text-text-tertiary" />
+        )}
       </td>
 
       {/* Title + labels */}

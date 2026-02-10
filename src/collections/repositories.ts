@@ -14,9 +14,7 @@ export const repositoryCollection = createCollection(
     queryFn: async (): Promise<Repository[]> => {
       const tracked = getTrackedRepos();
       if (tracked.length === 0) return [];
-      const repos = await fetchTrackedRepos(tracked);
-      // Add starred_by_me default since GitHub API doesn't include it
-      return repos.map((repo) => ({ ...repo, starred_by_me: false }));
+      return fetchTrackedRepos(tracked);
     },
     queryClient,
     staleTime: 60 * 1000,

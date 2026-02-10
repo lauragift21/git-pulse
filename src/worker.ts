@@ -16,7 +16,7 @@ interface Env {
 
 const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
-const OAUTH_SCOPES = "public_repo read:user";
+const OAUTH_SCOPES = "read:user";
 const STATE_COOKIE = "gitpulse_oauth_state";
 
 /**

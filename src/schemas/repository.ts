@@ -23,7 +23,6 @@ export const repositorySchema = z.object({
     html_url: z.string(),
     id: z.number(),
   }),
-  starred_by_me: z.boolean().default(false),
 });
 
 export type Repository = z.infer<typeof repositorySchema>;

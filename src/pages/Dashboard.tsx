@@ -26,7 +26,6 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { timeAgo, toISODay } from "@/lib/date";
 import { getLanguageColor } from "@/lib/colors";
-import { starRepoAction, unstarRepoAction } from "@/mutations/repositories";
 
 /* -------------------------------------------------------------------------- */
 /*  Stat card                                                                  */
@@ -300,21 +299,12 @@ interface RepoCardProps {
     open_issues_count: number;
     updated_at: string;
     html_url: string;
-    starred_by_me: boolean;
     owner: { login: string; avatar_url: string };
   };
 }
 
 function RepoCard({ repo }: RepoCardProps) {
   const langColor = getLanguageColor(repo.language);
-
-  const handleStarToggle = () => {
-    if (repo.starred_by_me) {
-      unstarRepoAction({ repoId: repo.id, repoFullName: repo.full_name });
-    } else {
-      starRepoAction({ repoId: repo.id, repoFullName: repo.full_name });
-    }
-  };
 
   return (
     <Card hover padding="md" className="flex flex-col gap-3">
@@ -357,20 +347,10 @@ function RepoCard({ repo }: RepoCardProps) {
           </span>
         )}
 
-        <button
-          onClick={handleStarToggle}
-          className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
-        >
-          <Star
-            size={12}
-            className={
-              repo.starred_by_me
-                ? "fill-black text-black dark:fill-white dark:text-white"
-                : ""
-            }
-          />
+        <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
+          <Star size={12} />
           {repo.stargazers_count.toLocaleString()}
-        </button>
+        </span>
 
         <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
           <GitFork size={12} />

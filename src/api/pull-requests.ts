@@ -79,33 +79,3 @@ export async function fetchAllPullRequests(
 
   return allPRs;
 }
-
-export async function addPRReviewers(
-  fullName: string,
-  prNumber: number,
-  reviewers: string[],
-): Promise<void> {
-  await githubFetch(
-    `/repos/${fullName}/pulls/${prNumber}/requested_reviewers`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reviewers }),
-    },
-  );
-}
-
-export async function updatePullRequest(
-  fullName: string,
-  prNumber: number,
-  data: { state?: "open" | "closed"; labels?: string[] },
-): Promise<GitHubPullRequest> {
-  return githubFetch<GitHubPullRequest>(
-    `/repos/${fullName}/pulls/${prNumber}`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    },
-  );
-}

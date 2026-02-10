@@ -59,28 +59,3 @@ export async function searchRepos(query: string): Promise<GitHubRepo[]> {
   );
   return data.items;
 }
-
-export async function starRepo(fullName: string): Promise<void> {
-  await githubFetch(`/user/starred/${fullName}`, { method: "PUT" });
-}
-
-export async function unstarRepo(fullName: string): Promise<void> {
-  await githubFetch(`/user/starred/${fullName}`, { method: "DELETE" });
-}
-
-export async function checkStarred(fullName: string): Promise<boolean> {
-  try {
-    await githubFetch(`/user/starred/${fullName}`);
-    return true;
-  } catch (err) {
-    // 404 means not starred — that's expected
-    if (
-      err instanceof Error &&
-      "status" in err &&
-      (err as { status: number }).status === 404
-    ) {
-      return false;
-    }
-    throw err;
-  }
-}

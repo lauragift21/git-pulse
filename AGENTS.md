@@ -6,14 +6,13 @@ These rules apply to all coding sessions in the GitPulse project.
 
 GitPulse is a GitHub Activity Dashboard built with React + TanStack DB. It showcases
 TanStack DB's realtime features: collections, live queries (filters, joins, sorts,
-aggregates), optimistic mutations, and reactive UI updates.
+aggregates), and reactive UI updates.
 
 ## Architecture
 
 - **Data layer**: TanStack DB collections are the single source of truth
 - **Fetching**: TanStack Query + @tanstack/query-db-collection bridges API data into collections
 - **Queries**: All UI reads go through `useLiveQuery` / `useLiveSuspenseQuery` — never read from Query cache directly
-- **Mutations**: Use `createOptimisticAction` for complex multi-collection mutations, `collection.update()` for simple ones
 - **Routing**: Simple state-based SPA page switching (no URL router)
 
 ## Code Conventions
@@ -32,13 +31,6 @@ aggregates), optimistic mutations, and reactive UI updates.
 - Import operators (`eq`, `gt`, `and`, `or`, `count`, etc.) from `@tanstack/react-db`
 - Always pass reactive dependencies as the second argument to `useLiveQuery`
 - Use `useLiveSuspenseQuery` inside Suspense boundaries for initial loads only
-
-### Mutations
-
-- Place optimistic actions in `src/mutations/`
-- Always call `collection.utils.refetch()` inside `mutationFn` after API call
-- Keep `onMutate` synchronous — never await inside it
-- Handle rollback by relying on TanStack DB's automatic rollback on error
 
 ### API Layer
 
@@ -74,7 +66,6 @@ aggregates), optimistic mutations, and reactive UI updates.
 - `src/collections/` — TanStack DB collection definitions
 - `src/schemas/` — Zod schemas for all entities
 - `src/queries/` — Reusable live query definitions
-- `src/mutations/` — Optimistic action definitions
 - `src/api/` — GitHub REST API client and endpoint functions
 - `src/pages/` — Top-level page components
 - `src/components/` — UI components organized by feature
@@ -96,5 +87,4 @@ Key packages (do not add alternatives without reason):
 
 - Run `npm run build` to verify TypeScript compilation
 - Run `npm run dev` to test locally
-- Verify optimistic mutations show instant UI feedback before API round-trip
 - Test with invalid/expired token to verify error handling

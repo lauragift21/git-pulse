@@ -27,8 +27,6 @@ queryCollectionOptions() bridge
 TanStack DB Collections (single source of truth)
       ↓
 useLiveQuery() (reactive reads in components)
-      ↓
-createOptimisticAction() (writes → API → refetch)
 ```
 
 The key principle: **all UI reads go through TanStack DB live queries, never directly from the Query cache.**
@@ -42,7 +40,6 @@ The key principle: **all UI reads go through TanStack DB live queries, never dir
 | `src/schemas/`     | Zod schemas for all entities (Repository, Issue, PullRequest, Event, Label, User)           |
 | `src/collections/` | TanStack DB collection definitions - one per entity, bridged via `queryCollectionOptions()` |
 | `src/api/`         | GitHub REST API client (`client.ts` handles auth, rate limiting, errors) + endpoint modules |
-| `src/mutations/`   | Optimistic actions using `createOptimisticAction()` for instant UI updates                  |
 | `src/pages/`       | 6 pages: Setup, Dashboard, ActivityFeed, Issues, PullRequests, Contributors                 |
 | `src/components/`  | Layout (AppShell, Sidebar, Header) + UI primitives (Button, Card, Badge, Avatar, etc.)      |
 | `src/hooks/`       | `useGitHubToken`, `useTrackedRepos`, `useDarkMode`                                          |
@@ -52,14 +49,12 @@ The key principle: **all UI reads go through TanStack DB live queries, never dir
 
 ### Key Patterns
 
-1. **Optimistic mutations** - Every write (`onMutate`) instantly updates the local collection, then the API call fires, then `collection.utils.refetch()` syncs. TanStack DB auto-rolls back on errors.
+1. **Resilient multi-repo fetching** - All `fetchAll*()` functions use `Promise.allSettled` so one repo's failure doesn't break others.
 
-2. **Resilient multi-repo fetching** - All `fetchAll*()` functions use `Promise.allSettled` so one repo's failure doesn't break others.
+2. **Live queries with reactive deps** - Filters, sorts, and search terms are passed as the second argument to `useLiveQuery`, making the UI automatically re-render when state changes.
 
-3. **Live queries with reactive deps** - Filters, sorts, and search terms are passed as the second argument to `useLiveQuery`, making the UI automatically re-render when state changes.
+3. **Simple SPA routing** - A `useState<Page>` in `App.tsx` drives navigation, no URL router.
 
-4. **Simple SPA routing** - A `useState<Page>` in `App.tsx` drives navigation, no URL router.
+4. **Stale time strategy** - Labels (10min) > Repos (5min) > Issues/PRs (3min) > Events (2min), reflecting how often each entity changes.
 
-5. **Stale time strategy** - Labels (10min) > Repos (5min) > Issues/PRs (3min) > Events (2min), reflecting how often each entity changes.
-
-6. **Theming** - CSS custom properties in `globals.css` with a `.dark` class override and Tailwind's `dark:` variant. The design is intentionally monochromatic (black/white).
+5. **Theming** - CSS custom properties in `globals.css` with a `.dark` class override and Tailwind's `dark:` variant. The design is intentionally monochromatic (black/white).

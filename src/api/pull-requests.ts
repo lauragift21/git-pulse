@@ -38,6 +38,17 @@ export async function fetchRepoPullRequests(
 }
 
 /**
+ * Fetch a single PR's detail, which includes additions, deletions,
+ * changed_files, commits, and other stats not returned by the list endpoint.
+ */
+export async function fetchPullRequestDetail(
+  fullName: string,
+  prNumber: number,
+): Promise<GitHubPullRequest> {
+  return githubFetch<GitHubPullRequest>(`/repos/${fullName}/pulls/${prNumber}`);
+}
+
+/**
  * Fetch open and closed PRs separately for each repo so that open PRs
  * are never crowded out by a large number of recently-updated closed PRs.
  */
@@ -51,7 +62,8 @@ export async function fetchAllPullRequests(
     ]),
   );
 
-  const allPRs: (GitHubPullRequest & { repository_full_name: string })[] = [];
+  // Collect unique PRs from list results, tagging each with its repo name
+  const listPRs: { pr: GitHubPullRequest; repoName: string }[] = [];
   const seen = new Set<number>();
 
   repoFullNames.forEach((repoName, repoIndex) => {
@@ -62,19 +74,35 @@ export async function fetchAllPullRequests(
       for (const pr of result.value) {
         if (seen.has(pr.id)) continue;
         seen.add(pr.id);
-        allPRs.push({
-          ...pr,
-          // Fields not returned by the list endpoint — default to safe values
-          additions: pr.additions ?? 0,
-          deletions: pr.deletions ?? 0,
-          changed_files: pr.changed_files ?? 0,
-          review_comments: pr.review_comments ?? 0,
-          commits: pr.commits ?? 0,
-          mergeable: pr.mergeable ?? null,
-          repository_full_name: repoName,
-        });
+        listPRs.push({ pr, repoName });
       }
     }
+  });
+
+  // Fetch individual PR details in parallel to get additions/deletions/stats.
+  // The list endpoint does not return these fields.
+  const detailResults = await Promise.allSettled(
+    listPRs.map(({ pr, repoName }) =>
+      fetchPullRequestDetail(repoName, pr.number),
+    ),
+  );
+
+  const allPRs: (GitHubPullRequest & { repository_full_name: string })[] = [];
+
+  listPRs.forEach(({ pr, repoName }, index) => {
+    const detail = detailResults[index];
+    const detailData = detail.status === "fulfilled" ? detail.value : undefined;
+
+    allPRs.push({
+      ...pr,
+      additions: detailData?.additions ?? pr.additions ?? 0,
+      deletions: detailData?.deletions ?? pr.deletions ?? 0,
+      changed_files: detailData?.changed_files ?? pr.changed_files ?? 0,
+      review_comments: detailData?.review_comments ?? pr.review_comments ?? 0,
+      commits: detailData?.commits ?? pr.commits ?? 0,
+      mergeable: detailData?.mergeable ?? pr.mergeable ?? null,
+      repository_full_name: repoName,
+    });
   });
 
   return allPRs;
